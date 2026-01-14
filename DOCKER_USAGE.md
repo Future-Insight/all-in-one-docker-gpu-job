@@ -14,6 +14,12 @@ All-In-One 音乐结构分析工具，基于深度学习分析音频的：
 
 ### 1. 构建镜像
 
+**本地GPU版本（推荐）：**
+```bash
+docker build -f Dockerfile.local.gpu -t allinone-local-gpu .
+```
+
+**GCP兼容版本：**
 ```bash
 docker build -f Dockerfile.gcp.gpu -t allinone .
 ```
@@ -24,6 +30,7 @@ docker build -f Dockerfile.gcp.gpu -t allinone .
 - NATTEN 0.17.5 (neighborhood attention库)
 - Madmom (音频处理库)
 - 预下载8个Harmonix训练模型
+- 本地版本不包含GCP依赖，镜像更小
 
 ### 2. 准备目录结构
 
@@ -107,6 +114,18 @@ tracks/
 
 ### 5. 简化运行脚本
 
+**本地GPU版本（推荐）：**
+参考 [run_local_gpu.sh](run_local_gpu.sh) 使用：
+
+```bash
+# 构建镜像
+docker build -f Dockerfile.local.gpu -t allinone-local-gpu .
+
+# 运行单个文件
+./run_local_gpu.sh your_song.wav
+```
+
+**GCP兼容版本：**
 参考 [run_docker_cmd_example.sh](run_docker_cmd_example.sh) 使用：
 
 ```bash
@@ -210,11 +229,15 @@ docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
 
 ## 注意事项
 
-1. **模型预下载**: Dockerfile已预下载8个模型文件到镜像中，避免运行时下载延迟
-2. **MP3格式**: 建议先用FFmpeg转为WAV格式，避免解码器差异导致的时间偏移
-3. **Demucs模型**: 首次运行会下载Demucs音轨分离模型（约350MB）
-4. **中间文件**: 不加`--keep-byproducts`会自动清理demix和spec文件节省空间
-5. **GCP版本**: 目前仅GPU版本Dockerfile在GCP Job上稳定运行，CPU版本尚不可用
+1. **Dockerfile版本选择**:
+   - `Dockerfile.local.gpu`: 本地GPU运行，不含GCP依赖，镜像更小
+   - `Dockerfile.gcp.gpu`: GCP兼容版本，包含google-cloud-storage，用于GCS访问
+   - `Dockerfile.gcp.cpu`: CPU版本，仅用于测试（不推荐生产使用）
+2. **模型预下载**: Dockerfile已预下载8个模型文件到镜像中，避免运行时下载延迟
+3. **MP3格式**: 建议先用FFmpeg转为WAV格式，避免解码器差异导致的时间偏移
+4. **Demucs模型**: 首次运行会下载Demucs音轨分离模型（约350MB）
+5. **中间文件**: 不加`--keep-byproducts`会自动清理demix和spec文件节省空间
+6. **GCP版本**: 目前仅GPU版本Dockerfile在GCP Job上稳定运行，CPU版本尚不可用
 
 ---
 
@@ -251,4 +274,35 @@ chmod -R 755 audio results tracks
 - [README.md](README.md) - 项目主文档
 - [README_GCP_JOB.md](README_GCP_JOB.md) - GCP部署详细说明
 - [TRAINING.md](TRAINING.md) - 模型训练指南
-- [run_docker_cmd_example.sh](run_docker_cmd_example.sh) - 运行示例脚本
+- [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) - GitHub Actions自动构建说明
+- [run_local_gpu.sh](run_local_gpu.sh) - 本地GPU运行脚本
+- [run_docker_cmd_example.sh](run_docker_cmd_example.sh) - GCP兼容运行脚本
+
+---
+
+## GitHub Actions 自动构建
+
+本项目配置了GitHub Actions自动构建Docker镜像并推送到GitHub Container Registry。
+
+### 可用镜像
+
+- `ghcr.io/<用户名>/<仓库名>/allinone-local:latest` - 本地GPU版本（推荐）
+- `ghcr.io/<用户名>/<仓库名>/allinone:latest` - GCP兼容版本
+
+### 直接使用预构建镜像
+
+无需本地构建，直接拉取使用：
+
+```bash
+# 拉取本地GPU版本
+docker pull ghcr.io/<用户名>/<仓库名>/allinone-local:latest
+
+# 运行
+docker run --gpus all \
+  -v $PWD/audio:/app/input \
+  -v $PWD/results:/app/output \
+  ghcr.io/<用户名>/<仓库名>/allinone-local:latest \
+  --out-dir /app/output /app/input/your_audio.wav
+```
+
+详细说明请查看 [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md)

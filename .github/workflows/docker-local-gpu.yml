@@ -1,4 +1,4 @@
-name: 构建并推送Docker镜像 (GPU版本)
+name: 构建并推送Docker镜像 (本地GPU版本)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
     branches:
       - main
     paths:
-      - 'Dockerfile.gcp.gpu'
+      - 'Dockerfile.local.gpu'
       - 'src/**'
       - 'requirements.txt'
 
@@ -42,7 +42,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/allinone
+          images: ghcr.io/${{ github.repository }}/allinone-local
           tags: |
             type=raw,value=${{ inputs.image_tag || 'latest' }}
             type=sha,prefix={{branch}}-
@@ -54,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.gcp.gpu
+          file: ./Dockerfile.local.gpu
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -64,7 +64,7 @@ jobs:
       - name: 设置镜像为公开
         run: |
           # 使用 GitHub API 将镜像设置为公开
-          PACKAGE_NAME="allinone"
+          PACKAGE_NAME="allinone-local"
           curl -X PATCH \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
@@ -81,10 +81,11 @@ jobs:
       - name: 输出镜像信息
         run: |
           echo "=== Docker镜像已推送到GitHub Container Registry ==="
-          echo "镜像地址: ghcr.io/${{ github.repository }}/allinone"
+          echo "镜像类型: 本地GPU版本 (无GCP依赖)"
+          echo "镜像地址: ghcr.io/${{ github.repository }}/allinone-local"
           echo "镜像标签: ${{ steps.meta.outputs.tags }}"
           echo "镜像可见性: 公开 (Public)"
           echo ""
           echo "使用方法:"
-          echo "1. 拉取镜像: docker pull ghcr.io/${{ github.repository }}/allinone:${{ inputs.image_tag || 'latest' }}"
-          echo "2. 运行: docker run -v \$PWD/audio:/app/input -v \$PWD/results:/app/output ghcr.io/${{ github.repository }}/allinone:${{ inputs.image_tag || 'latest' }} /app/input/your_audio.wav"
+          echo "1. 拉取镜像: docker pull ghcr.io/${{ github.repository }}/allinone-local:${{ inputs.image_tag || 'latest' }}"
+          echo "2. 运行: docker run --gpus all -v \$PWD/audio:/app/input -v \$PWD/results:/app/output ghcr.io/${{ github.repository }}/allinone-local:${{ inputs.image_tag || 'latest' }} --out-dir /app/output /app/input/your_audio.wav"
