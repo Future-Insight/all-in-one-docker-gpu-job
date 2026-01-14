@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
+from functools import partial
 from pathlib import Path
 
 from anyio import to_thread
@@ -114,12 +115,14 @@ async def analyze_audio(
       try:
         result = await asyncio.wait_for(
           to_thread.run_sync(
-            process_audio_file,
-            audio_path,
-            model_name=model,
-            device=device,
-            demix_dir=demix_dir,
-            spec_dir=spec_dir,
+            partial(
+              process_audio_file,
+              audio_path,
+              model_name=model,
+              device=device,
+              demix_dir=demix_dir,
+              spec_dir=spec_dir,
+            ),
           ),
           timeout=settings.analysis_timeout_seconds,
         )

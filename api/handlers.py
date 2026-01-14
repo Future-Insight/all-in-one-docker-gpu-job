@@ -4,8 +4,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-import allin1
-
 
 @dataclass(frozen=True)
 class ApiError(Exception):
@@ -26,6 +24,14 @@ def process_audio_file(
   spec_dir: Path,
 ) -> dict:
   start = time.perf_counter()
+  try:
+    import allin1  # lazy import so the web can start without heavy deps
+  except Exception as e:
+    raise ApiError(
+      status_code=503,
+      code="DEPENDENCY_MISSING",
+      message="Missing runtime dependency: allin1 (and its ML dependencies). Install full requirements to use /analyze.",
+    ) from e
   try:
     result = allin1.analyze(
       paths=str(file_path),
