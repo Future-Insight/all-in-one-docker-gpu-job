@@ -1,0 +1,64 @@
+name: 构建并推送Docker镜像 (CPU版本)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '镜像标签'
+        required: false
+        default: 'latest'
+        type: string
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 提取元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/allinone
+          tags: |
+            type=raw,value=${{ inputs.image_tag || 'latest' }}
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: 构建并推送Docker镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.gcp.gpu
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 输出镜像信息
+        run: |
+          echo "=== Docker镜像已推送到GitHub Container Registry ==="
+          echo "镜像地址: ghcr.io/${{ github.repository }}/allinone"
+          echo "镜像标签: ${{ steps.meta.outputs.tags }}"
+          echo ""
+          echo "使用方法:"
+          echo "1. 拉取镜像: docker pull ghcr.io/${{ github.repository }}/allinone:${{ inputs.image_tag || 'latest' }}"
+          echo "2. 运行: docker run -v \$PWD/audio:/app/input -v \$PWD/results:/app/output ghcr.io/${{ github.repository }}/allinone:${{ inputs.image_tag || 'latest' }} /app/input/your_audio.wav"
