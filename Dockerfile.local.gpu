@@ -25,7 +25,9 @@ RUN git clone --depth=1 --branch main --recurse-submodules \
 RUN pip install huggingface_hub
 
 COPY . .
-RUN pip install -e .
+RUN pip install -e . \
+ && pip install -r requirements_api.txt
+RUN chmod +x /app/docker_entrypoint.sh
 
 RUN mkdir -p /app/output
 
@@ -35,5 +37,5 @@ models = ['harmonix-fold0-0vra4ys2.pth', 'harmonix-fold1-3ozjhtsj.pth', 'harmoni
 [hf_hub_download(repo_id='taejunkim/allinone', filename=model, cache_dir='/root/.cache/huggingface/hub') for model in models]; \
 print('All models downloaded successfully')"
 
-# Default entrypoint - can be overridden
-ENTRYPOINT ["allin1"]
+# 默认入口：支持 `api` / `job` / CLI 参数透传
+ENTRYPOINT ["/app/docker_entrypoint.sh"]

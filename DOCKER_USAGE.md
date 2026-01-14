@@ -135,6 +135,58 @@ docker build -f Dockerfile.local.gpu -t allinone-local-gpu .
 
 ---
 
+## Web API 使用（HTTP上传分析）
+
+### 1. 直接复用现有 GPU 镜像（推荐）
+
+API 已集成进 `Dockerfile.local.gpu` / `Dockerfile.gcp.gpu` 构建的镜像中，无需单独镜像。
+
+构建本地 GPU 镜像：
+```bash
+docker build -f Dockerfile.local.gpu -t allinone-local-gpu .
+```
+
+启动 API：
+```bash
+docker run --gpus all \
+  -p 8000:8000 \
+  -e API_KEYS="secret-key-1,secret-key-2" \
+  allinone-local-gpu api
+```
+
+也可以使用脚本一键启动：
+```bash
+API_KEYS="secret-key-1,secret-key-2" ./run_local_api.sh
+```
+
+### 2. 调用示例
+
+健康检查：
+```bash
+curl http://localhost:8000/health
+```
+
+分析上传（multipart/form-data）：
+```bash
+curl -X POST http://localhost:8000/analyze \
+  -H "X-API-Key: secret-key-1" \
+  -F "file=@test.mp3" \
+  -F "model=harmonix-all"
+```
+
+模型列表：
+```bash
+curl http://localhost:8000/models
+```
+
+### 3. API 文档
+
+启动后访问：
+- Swagger UI: `http://localhost:8000/docs`
+- OpenAPI JSON: `http://localhost:8000/openapi.json`
+
+---
+
 ## GCP云端部署
 
 ### 1. 初始化GCP环境

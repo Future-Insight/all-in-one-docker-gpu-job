@@ -1,5 +1,17 @@
 # TL;DR
 
+## Web API（FastAPI）
+
+本仓库已内置一个轻量 Web API，支持 HTTP 上传音频进行分析（同步处理、API Key 认证、处理完即删除临时文件）。
+
+本地 GPU 镜像运行：
+```bash
+docker build -f Dockerfile.local.gpu -t allinone-local-gpu .
+docker run --gpus all -p 8000:8000 -e API_KEYS="secret-key-1" allinone-local-gpu api
+```
+
+接口文档：`http://localhost:8000/docs`  
+更多 Docker 运行方式见：`DOCKER_USAGE.md`
 
 
 **Note:** Each audio file will generate its own JSON file with analysis results in the output directory.
@@ -500,4 +512,3 @@ If you use this package for your research, please cite the following paper:
   year={2023}
 }
 ```
-
