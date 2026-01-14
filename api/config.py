@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
   api_keys: list[str] = Field(default_factory=list, validation_alias="API_KEYS")
   max_file_size_bytes: int = Field(default=100 * 1024 * 1024, validation_alias="MAX_FILE_SIZE_BYTES")
-  max_concurrent_requests: int = Field(default=2, validation_alias="MAX_CONCURRENT_REQUESTS")
+  max_concurrent_requests: int = Field(default=5, validation_alias="MAX_CONCURRENT_REQUESTS")
   analysis_timeout_seconds: int = Field(default=120, validation_alias="ANALYSIS_TIMEOUT_SECONDS")
   allowed_extensions: set[str] = Field(default_factory=lambda: {".mp3", ".wav"})
 

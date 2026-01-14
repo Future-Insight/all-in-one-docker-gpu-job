@@ -14,7 +14,24 @@ from .handlers import ApiError, get_available_models, process_audio_file
 from .models import AnalysisResponse, HealthResponse, ModelsResponse
 
 app = FastAPI(title="Music Analysis API")
-semaphore = asyncio.Semaphore(settings.max_concurrent_requests)
+_max_concurrent_requests = max(1, settings.max_concurrent_requests)
+_inflight_lock = asyncio.Lock()
+_inflight_requests = 0
+
+
+async def _try_acquire_concurrency_slot() -> bool:
+  global _inflight_requests
+  async with _inflight_lock:
+    if _inflight_requests >= _max_concurrent_requests:
+      return False
+    _inflight_requests += 1
+    return True
+
+
+async def _release_concurrency_slot() -> None:
+  global _inflight_requests
+  async with _inflight_lock:
+    _inflight_requests = max(0, _inflight_requests - 1)
 
 
 def _error(status_code: int, code: str, message: str) -> JSONResponse:
@@ -68,8 +85,9 @@ async def analyze_audio(
 ):
   acquired = False
   try:
-    await asyncio.wait_for(semaphore.acquire(), timeout=0)
-    acquired = True
+    acquired = await _try_acquire_concurrency_slot()
+    if not acquired:
+      raise ApiError(status_code=429, code="TOO_MANY_REQUESTS", message="Too many concurrent requests")
 
     filename = Path(file.filename or "upload").name
     if not filename:
@@ -109,8 +127,6 @@ async def analyze_audio(
         raise ApiError(status_code=500, code="PROCESSING_ERROR", message="Analysis timeout") from e
 
       return {"success": True, "data": result["data"], "processing_time": result["processing_time"]}
-  except TimeoutError:
-    raise ApiError(status_code=429, code="TOO_MANY_REQUESTS", message="Too many concurrent requests")
   finally:
     if acquired:
-      semaphore.release()
+      await _release_concurrency_slot()
