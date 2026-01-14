@@ -66,12 +66,11 @@ async def analyze_audio(
   model: str = Form(default="harmonix-all"),
   _api_key: str = Depends(verify_api_key),
 ):
+  acquired = False
   try:
     await asyncio.wait_for(semaphore.acquire(), timeout=0)
-  except TimeoutError:
-    raise ApiError(status_code=429, code="TOO_MANY_REQUESTS", message="Too many concurrent requests")
+    acquired = True
 
-  try:
     filename = Path(file.filename or "upload").name
     if not filename:
       filename = "upload"
@@ -110,5 +109,8 @@ async def analyze_audio(
         raise ApiError(status_code=500, code="PROCESSING_ERROR", message="Analysis timeout") from e
 
       return {"success": True, "data": result["data"], "processing_time": result["processing_time"]}
+  except TimeoutError:
+    raise ApiError(status_code=429, code="TOO_MANY_REQUESTS", message="Too many concurrent requests")
   finally:
-    semaphore.release()
+    if acquired:
+      semaphore.release()
